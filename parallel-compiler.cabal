@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bb9bf5e6bbbea361f7c8eb5191697c8f97e7695f2d2fbbdcdfb07289c6926d68
+-- hash: 9a075b93741285800476eb6dbbdb4bf8441aad38aab2395b19d6882c468c5289
 
 name:           parallel-compiler
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Tree
   other-modules:
       Paths_parallel_compiler
   hs-source-dirs:
