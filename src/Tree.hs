@@ -70,7 +70,7 @@ exampleAst =
 
 exampleNCTree = vectorToNCTree $ vectoriseTree exampleAst
 
-test1 = fmap (print . fst) exampleNCTree
+test1 = mconcat $ fmap (print . fst) exampleNCTree
 test2 = mapM_ print exampleNCTree
 test3 = mapM_ print $ findNodesOfType "Expr" exampleNCTree
 
