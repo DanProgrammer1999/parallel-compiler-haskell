@@ -1,10 +1,12 @@
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators, ViewPatterns, FlexibleContexts, RebindableSyntax #-}
 
 module AccTree where
 
 import Data.Array.Accelerate     as A
 import qualified Prelude         as P
 import Data.Array.Accelerate.Interpreter
+
+import Utils
 
 data Tree a = Tree 
     { treeRoot     :: a
@@ -17,8 +19,8 @@ data ASTNode = ASTNode
     } deriving (P.Show)
 
 type AST = Tree ASTNode
--- type VectorNode = (P.Int, P.String, P.String)
-type String = Array (Z :. Int) Char
+type VectorTree = (Vector Int, Matrix Char, Matrix Char)
+type NCTree = Acc(Matrix (Int, Char, Char))
 
 vectoriseTree :: AST -> [(P.Int, P.String, P.String)]
 vectoriseTree tree = vectoriseTree' tree 0
@@ -27,44 +29,44 @@ vectoriseTree tree = vectoriseTree' tree 0
             = (currLevel, nodeType root, nodeValue root)
             : P.concatMap (\t -> vectoriseTree' t (currLevel + 1)) children
 
-vectorTreeToArray :: [(P.Int, P.String, P.String)] -> (Array DIM1 Int, Matrix Char, Matrix Char)
-vectorTreeToArray vTree = (depthAcc, typesAcc, valuesAcc)
+treeToAccelerate :: [(P.Int, P.String, P.String)] -> VectorTree
+treeToAccelerate vTree = (depthAcc, typesAcc, valuesAcc)
     where 
         depthVector = P.map (\(d, _, _) -> d) vTree
-        types = P.map (\(_, t, _) -> t) vTree
-        values = P.map (\(_, _, v) -> v) vTree
-
-        maxLength arr = P.maximum (P.map P.length arr)
+        types  = padToEqualLength '\0' $ P.map (\(_, t, _) -> t) vTree
+        values = padToEqualLength '\0' $ P.map (\(_, _, v) -> v) vTree
 
         depthAcc = fromList (Z :. P.length depthVector) depthVector
-        -- TODO this doesn't work! every input string needs to be padded to max length
-        typesAcc = fromList (Z :. maxLength types :. P.length types) (P.concat types)
-        valuesAcc = fromList (Z :. maxLength values :. P.length values) (P.concat values)
 
+        maxLength arr = P.maximum (P.map P.length arr)
+        typesAcc = fromList (Z :. P.length types :. maxLength types) (P.concat types)
+        valuesAcc = fromList (Z :. P.length values :. maxLength values) (P.concat values)
 
-constructNodeCoordinates :: Acc (Array DIM1 Int) -> Acc (Array DIM2 Int) 
-constructNodeCoordinates depthArray = undefined 
+constructNodeCoordinates :: Acc (Vector Int) -> Acc (Matrix Int)
+constructNodeCoordinates depthVec = nodeCoordinates 
     where 
-        maxDepth = maximum depthArray
-        nodeCount = shape depthArray
+        maxDepth = the $ maximum depthVec
+        nodeCount = size depthVec
 
-        
+        -- given an index, generate a single row of depth matrix
+        generateDMRow (I2 i j) = if depthVec !! i == j then 1 else 0
+        depthMatrix = generate (I2 nodeCount (maxDepth + 1)) generateDMRow
+        cumulativeMatrix = transpose $ scanl1 (+) $ transpose depthMatrix
 
-        -- zeros = generate (nodeCount)
+        dropExtraNumbers (I2 i j) e = if j > depthVec !! i then 0 else e
+        nodeCoordinates = imap dropExtraNumbers cumulativeMatrix        
 
--- constructNodeCoordinates :: [Int] -> [NodeCoordinates]
--- constructNodeCoordinates depthVector = cutoffMatrix
---     where 
---         maxDepth = maximum depthVector
---         boolDepthMatrix = map (\d -> map (fromEnum . (== d)) [0 .. maxDepth]) depthVector
---         cumulativeMatrix = transpose $ map (scanl1 (+)) $ transpose boolDepthMatrix
---         cutoffMatrix = zipWith (\d nc -> take (d + 1) nc ++ replicate (maxDepth - d) 0) depthVector cumulativeMatrix
+vectorToNCTree :: VectorTree -> Acc (Matrix Int, Matrix Char, Matrix Char)
+vectorToNCTree (depthVec, types, values) = 
+    let 
+        depthVec' = use depthVec
+        types' = use types
+        values' = use values
+        nodeCoordinates = constructNodeCoordinates depthVec'
+    in lift (nodeCoordinates, types', values')
 
--- vectorToNCTree :: [VectorNode] -> NCTree
--- vectorToNCTree vectorTree = zip coordinates (map snd vectorTree)
---     where 
---         depthVector = map fst vectorTree
---         coordinates = constructNodeCoordinates depthVector
+astToNCTree :: AST -> Acc (Matrix Int, Matrix Char, Matrix Char)
+astToNCTree = vectorToNCTree . treeToAccelerate . vectoriseTree 
 
 -- findNodesOfType :: String -> NCTree -> [NCNode] 
 -- findNodesOfType nType = filter ((== nType) . nodeType . snd)
