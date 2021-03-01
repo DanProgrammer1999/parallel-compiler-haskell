@@ -54,7 +54,7 @@ constructNodeCoordinates depthVec = nodeCoordinates
         cumulativeMatrix = transpose $ scanl1 (+) $ transpose depthMatrix
 
         dropExtraNumbers (I2 i j) e = if j > depthVec !! i then 0 else e
-        nodeCoordinates = imap dropExtraNumbers cumulativeMatrix        
+        nodeCoordinates = imap dropExtraNumbers cumulativeMatrix
 
 vectorToNCTree :: VectorTree -> Acc (Matrix Int, Matrix Char, Matrix Char)
 vectorToNCTree (depthVec, types, values) = 
@@ -70,6 +70,15 @@ astToNCTree = vectorToNCTree . treeToAccelerate . vectoriseTree
 
 -- findNodesOfType :: String -> NCTree -> [NCNode] 
 -- findNodesOfType nType = filter ((== nType) . nodeType . snd)
+
+findNodesOfType :: [Char] -> NCTree -> Matrix Int
+findNodesOfType query (unzip3 -> (nc, types, vals)) = undefined
+    where
+        (I2 _ typeLength) = unlift $ shape types
+        toPad :: Exp (Plain Char)
+        toPad = lift '\0'
+
+        -- query' = lift3 padRight typeLength toPad (lift query)
 
 exampleAst :: AST
 exampleAst = 
