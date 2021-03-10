@@ -20,7 +20,7 @@ data ASTNode = ASTNode
 
 type AST = Tree ASTNode
 type VectorTree = (Vector Int, Matrix Char, Matrix Char)
-type NCTree = Acc(Matrix (Int, Char, Char))
+type NCTree = (Acc (Matrix Int), Matrix Char, Matrix Char)
 
 vectoriseTree :: AST -> [(P.Int, P.String, P.String)]
 vectoriseTree tree = vectoriseTree' tree 0
@@ -56,32 +56,35 @@ constructNodeCoordinates depthVec = nodeCoordinates
         dropExtraNumbers (I2 i j) e = if j > depthVec !! i then 0 else e
         nodeCoordinates = imap dropExtraNumbers cumulativeMatrix
 
-vectorToNCTree :: VectorTree -> Acc (Matrix Int, Matrix Char, Matrix Char)
-vectorToNCTree (depthVec, types, values) = 
+vectorToNCTree :: VectorTree -> NCTree
+vectorToNCTree (depthVec, types, values) =
     let 
         depthVec' = use depthVec
         types' = use types
         values' = use values
         nodeCoordinates = constructNodeCoordinates depthVec'
-    in lift (nodeCoordinates, types', values')
+    in (nodeCoordinates, types, values)
 
-astToNCTree :: AST -> Acc (Matrix Int, Matrix Char, Matrix Char)
-astToNCTree = vectorToNCTree . treeToAccelerate . vectoriseTree 
+astToNCTree :: AST -> (Acc (Matrix Int), Matrix Char, Matrix Char)
+astToNCTree = vectorToNCTree . treeToAccelerate . vectoriseTree
 
--- findNodesOfType :: String -> NCTree -> [NCNode] 
--- findNodesOfType nType = filter ((== nType) . nodeType . snd)
-
-findNodesOfType :: [Char] -> NCTree -> Matrix Int
-findNodesOfType query (unzip3 -> (nc, types, vals)) = undefined
+findNodesOfType :: [Char] -> NCTree -> Acc (Matrix Int)
+-- findNodesOfType :: [Char] -> NCTree -> Exp a
+findNodesOfType query (nc, types, vals) = reshape correctShape resVector
     where
-        (I2 _ typeLength) = unlift $ shape types
-        toPad :: Exp (Plain Char)
-        toPad = lift '\0'
+        (Z :. _ :. typeLength) = arrayShape types
+        query' = use $ fromList (Z :. typeLength) (padRight typeLength '\0' query)
+        boolVector = all (\(T2 (I2 _ j) val) -> val == (query' !! j)) (indexed (use types))
+        boolMatrix = generate (shape nc) (\(I2 i _) -> boolVector !! i)
 
-        -- query' = lift3 padRight typeLength toPad (lift query)
+        resVector = afst $ compact boolMatrix nc
+
+        (I2 _ maxDepth ) = shape nc
+        correctShape = I2 (size resVector `div` maxDepth) maxDepth
+
 
 exampleAst :: AST
-exampleAst = 
+exampleAst =
     Tree (ASTNode "Expr" "")
         [ Tree (ASTNode "Op" "/")
             [ Tree (ASTNode "Expr" "")
