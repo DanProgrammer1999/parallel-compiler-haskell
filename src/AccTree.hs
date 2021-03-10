@@ -69,7 +69,6 @@ astToNCTree :: AST -> (Acc (Matrix Int), Matrix Char, Matrix Char)
 astToNCTree = vectorToNCTree . treeToAccelerate . vectoriseTree
 
 findNodesOfType :: [Char] -> NCTree -> Acc (Matrix Int)
--- findNodesOfType :: [Char] -> NCTree -> Exp a
 findNodesOfType query (nc, types, vals) = reshape correctShape resVector
     where
         (Z :. _ :. typeLength) = arrayShape types
@@ -82,6 +81,14 @@ findNodesOfType query (nc, types, vals) = reshape correctShape resVector
         (I2 _ maxDepth ) = shape nc
         correctShape = I2 (size resVector `div` maxDepth) maxDepth
 
+getParentCoordinates :: Acc (Matrix Int) -> Acc (Matrix Int)
+getParentCoordinates nc = generate (I2 nodeCount depth) genElement
+    where
+        (I2 nodeCount depth) = shape nc
+        genElement (I2 i j) =
+            if j + 1 == depth || nc ! I2 i (j + 1) == 0
+            then 0
+            else nc ! I2 i j
 
 exampleAst :: AST
 exampleAst =
