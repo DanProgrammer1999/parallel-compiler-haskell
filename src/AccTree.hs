@@ -4,7 +4,7 @@ module AccTree where
 
 import Data.Array.Accelerate     as A
 import qualified Prelude         as P
-import Data.Array.Accelerate.Interpreter
+import Data.Array.Accelerate.Interpreter (run)
 
 import Utils
 
@@ -91,29 +91,21 @@ getParentCoordinates nc = generate (I2 nodeCount depth) genElement
             then 0
             else nc ! I2 i j
 
-findAncestorsOfType :: [Char] -> NCTree -> Acc (Vector Int)
-findAncestorsOfType query tree@(nc, types, _) = fold1 max $ imap (\(I2 _ j) e -> e * j) isAncestorMatrix 
+findAncestorsOfType :: [Char] -> NCTree -> Acc (Array DIM1 Int)
+findAncestorsOfType query tree@(nc, types, _) = closestAncestorVec
     where
         focusNodes = findNodesOfType query tree
         parentCoords = getParentCoordinates nc
         (I2 focusNodesCount maxDepth) = shape parentCoords
         (I2 nodeCount _) = shape nc
-        isAncestor (I2 i j) 
-            = boolToInt
-            $ the
-            $ fold1 (&&)
-            $ generate (I1 maxDepth) (\(I1 r) -> parentCoords ! I2 i r == focusNodes ! I2 j r || parentCoords ! I2 i r == 0)
+        
+        focusNodesExt = replicate (lift (Z :. nodeCount :. All :. All)) focusNodes
+        parentCoordsExt = replicate (lift (Z :. All :. focusNodesCount :. All)) parentCoords
 
-        isAncestor' (I2 i j)
-            = boolToInt
-            $ the
-            $ fold1 (&&)
-            $ zipWith 
-                (\ancestor node -> ancestor == node || ancestor == 0) 
-                (slice parentCoords (lift (Z :. (i :: Exp Int) :. All)))
-                (slice focusNodes (lift (Z :. (j :: Exp Int) :. All)))
+        isAncestorMatrix = map boolToInt $ fold1 (&&) $ zipWith (\a b -> a == b || b == 0) parentCoordsExt focusNodesExt
+        closestAncestorVec = fold1 max $ imap (\(I2 i j) e -> e*j) isAncestorMatrix
 
-        isAncestorMatrix = generate (I2 focusNodesCount nodeCount) isAncestor'
+key :: NCTree -> Acc (Matrix Int) -> [(Acc (Vector Int), NCTree)]
 
 exampleAst :: AST
 exampleAst =

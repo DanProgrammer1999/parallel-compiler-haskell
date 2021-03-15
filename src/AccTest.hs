@@ -16,8 +16,7 @@ strTest s = fromList (Z :. P.length s) s
 getShape :: Elt e => Matrix e -> Exp Int
 getShape array = let (Z :. rows :. cols) = unlift (shape (use array)) :: Z :. Exp Int :. Exp Int in rows
 
-test1 :: Acc (Matrix (Float, Float))
-test1 = zip a b
+a = use (fromList (Z:.10) [0..] :: Vector Int)
 
-a = fill (I2 3 3) 1.0
-b = fill (I2 5 4) 2.0
+aExt = replicate (lift (Z :. All :. (2 :: Int))) a
+aExt' = replicate (lift (Z :. (2 :: Int) :. All :. All)) aExt
