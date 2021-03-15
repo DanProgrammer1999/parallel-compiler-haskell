@@ -1,0 +1,4 @@
+:set prompt ">>> "
+:set prompt-cont "... "
+
+import Data.Array.Accelerate.Interpreter (run)
