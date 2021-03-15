@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4eeefc6c12a2dcd37237b1ef56d96818787ecd660ac494623d9fe8be134b53af
+-- hash: ea8759fb71dfb5d5b9556016621b34115fecb7c71c8a316e6d57103fdf480435
 
 name:           parallel-compiler
 version:        0.1.0.0
@@ -30,7 +30,6 @@ library
       AccTest
       AccTree
       Lib
-      Tree
       Utils
   other-modules:
       Paths_parallel_compiler
