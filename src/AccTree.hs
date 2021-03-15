@@ -4,7 +4,7 @@ module AccTree where
 
 import Data.Array.Accelerate     as A
 import qualified Prelude         as P
-import Data.Array.Accelerate.Interpreter
+import Data.Array.Accelerate.Interpreter (run)
 
 import Utils
 
@@ -23,11 +23,11 @@ type VectorTree = (Vector Int, Matrix Char, Matrix Char)
 type NCTree = (Acc (Matrix Int), Matrix Char, Matrix Char)
 
 vectoriseTree :: AST -> [(P.Int, P.String, P.String)]
-vectoriseTree tree = vectoriseTree' tree 0
+vectoriseTree = vectoriseTree' 0
     where
-        vectoriseTree' (Tree root children) currLevel 
+        vectoriseTree' currLevel (Tree root children)  
             = (currLevel, nodeType root, nodeValue root)
-            : P.concatMap (\t -> vectoriseTree' t (currLevel + 1)) children
+            : P.concatMap (vectoriseTree' (currLevel + 1)) children
 
 treeToAccelerate :: [(P.Int, P.String, P.String)] -> VectorTree
 treeToAccelerate vTree = (depthAcc, typesAcc, valuesAcc)
@@ -39,6 +39,7 @@ treeToAccelerate vTree = (depthAcc, typesAcc, valuesAcc)
         depthAcc = fromList (Z :. P.length depthVector) depthVector
 
         maxLength arr = P.maximum (P.map P.length arr)
+        
         typesAcc = fromList (Z :. P.length types :. maxLength types) (P.concat types)
         valuesAcc = fromList (Z :. P.length values :. maxLength values) (P.concat values)
 
@@ -69,7 +70,7 @@ astToNCTree :: AST -> (Acc (Matrix Int), Matrix Char, Matrix Char)
 astToNCTree = vectorToNCTree . treeToAccelerate . vectoriseTree
 
 findNodesOfType :: [Char] -> NCTree -> Acc (Matrix Int)
-findNodesOfType query (nc, types, vals) = reshape correctShape resVector
+findNodesOfType query (nc, types, _) = reshape correctShape resVector
     where
         (Z :. _ :. typeLength) = arrayShape types
         query' = use $ fromList (Z :. typeLength) (padRight typeLength '\0' query)
@@ -89,6 +90,20 @@ getParentCoordinates nc = generate (I2 nodeCount depth) genElement
             if j + 1 == depth || nc ! I2 i (j + 1) == 0
             then 0
             else nc ! I2 i j
+
+findAncestorsOfType :: [Char] -> NCTree -> Acc (Array DIM1 Int)
+findAncestorsOfType query tree@(nc, types, _) = closestAncestorVec
+    where
+        focusNodes = findNodesOfType query tree
+        parentCoords = getParentCoordinates nc
+        (I2 focusNodesCount maxDepth) = shape parentCoords
+        (I2 nodeCount _) = shape nc
+        
+        focusNodesExt = replicate (lift (Z :. nodeCount :. All :. All)) focusNodes
+        parentCoordsExt = replicate (lift (Z :. All :. focusNodesCount :. All)) parentCoords
+
+        isAncestorMatrix = map boolToInt $ fold1 (&&) $ zipWith (\a b -> a == b || b == 0) parentCoordsExt focusNodesExt
+        closestAncestorVec = fold1 max $ imap (\(I2 i j) e -> e*j) isAncestorMatrix
 
 exampleAst :: AST
 exampleAst =
