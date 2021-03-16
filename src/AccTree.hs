@@ -115,6 +115,13 @@ findAncestorsOfType query tree@(nc, types, _)
             = imap (\(I2 i j) e -> lift (Z :. e :. j))
             $ replicate (lift (Z :. All :. maxDepth)) closestAncestorVec
 
+key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
+    => (Acc (Vector k) -> Acc (Array sh v) -> Acc (Array sh' v))
+    -> Acc (Matrix k)
+    -> Acc (Array (sh :. Int) v)
+    -> Acc (Matrix k, Array (sh' :. Int) r)
+key f keys vals = undefined
+
 exampleAst :: AST
 exampleAst =
     Tree (ASTNode "Expr" "")
