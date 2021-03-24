@@ -4,6 +4,7 @@ module AccTest where
 
 import Data.Array.Accelerate     as A
 import qualified Prelude         as P
+import AccTree
 
 import Data.Array.Accelerate.Interpreter 
 
@@ -20,3 +21,4 @@ a = use (fromList (Z:.10) [0..] :: Vector Int)
 
 aExt = replicate (lift (Z :. All :. (2 :: Int))) a
 aExt' = replicate (lift (Z :. (2 :: Int) :. All :. All)) aExt
+

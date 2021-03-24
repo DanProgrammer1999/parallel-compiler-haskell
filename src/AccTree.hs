@@ -49,8 +49,11 @@ constructNodeCoordinates depthVec = nodeCoordinates
         nodeCount = size depthVec
 
         -- given an index, generate a single row of depth matrix
-        generateDMRow (I2 i j) = if depthVec !! i == j then 1 else 0
-        depthMatrix = generate (I2 nodeCount (maxDepth + 1)) generateDMRow
+        depthMatrix 
+            = generate 
+            (I2 nodeCount (maxDepth + 1)) 
+            (\(I2 i j) -> boolToInt (depthVec !! i == j))
+            
         cumulativeMatrix = transpose $ scanl1 (+) $ transpose depthMatrix
 
         dropExtraNumbers (I2 i j) e = if j > depthVec !! i then 0 else e
@@ -115,35 +118,28 @@ findAncestorsOfType query tree@(nc, types, _)
             = imap (\(I2 i j) e -> lift (Z :. e :. j))
             $ replicate (lift (Z :. All :. maxDepth)) closestAncestorVec
 
+-- Inner product of 2 matrices (general case of matrix multiplication with custom product and sum combinators)
+innerProduct 
+    :: (Elt a, Elt b, Elt c) 
+    => (Exp a -> Exp b -> Exp c)  -- product function: how to combine 2 elements from two matrices
+    -> (Exp c -> Exp c -> Exp c)  -- sum function: how to combine the row of results into single element
+    -> Acc (Matrix a)             -- ma x x
+    -> Acc (Matrix b)             -- x x nb 
+    -> Acc (Matrix c)             
+innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
+    where 
+        -- na == nb - precondition
+        (I2 ma xa) = shape a
+        (I2 xb nb) = shape b
+        aExt = replicate (lift (Z :. nb :. All :. All)) a
+        bExt = replicate (lift (Z :. All :. ma :. All)) b
+
 key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
-    => (Acc (Vector k) -> Acc (Array sh v) -> Acc (Array sh' v))
-    -> Acc (Matrix k)
-    -> Acc (Array (sh :. Int) v)
-    -> Acc (Matrix k, Array (sh' :. Int) r)
+    => (Acc (Array sh k) -> Acc (Array (sh :. Int) v) -> Acc (Array sh' r))
+    -> Acc (Array (sh :. Int) k)
+    -> Acc (Array (sh :. Int :. Int) v)
+    -> Acc (Array (sh :. Int) k, Array (sh' :. Int) r)
 key f keys vals = undefined
+    
 
-key :: NCTree -> Acc (Matrix Int) -> [(Acc (Vector Int), NCTree)]
 
-exampleAst :: AST
-exampleAst =
-    Tree (ASTNode "Expr" "")
-        [ Tree (ASTNode "Op" "/")
-            [ Tree (ASTNode "Expr" "")
-                [ Tree (ASTNode "Op" "+")
-                    [ Tree (ASTNode "Expr" "")
-                        [ Tree (ASTNode "Op" "*")
-                            [ Tree (ASTNode "Var" "x") []
-                            , Tree (ASTNode "Num" "2") []
-                            ]
-                        ]
-                    , Tree (ASTNode "Num" "1") []
-                    ]
-                ]
-            , Tree (ASTNode "Expr" "")
-                [ Tree (ASTNode "Op" "+")
-                    [ Tree (ASTNode "Num" "3") []
-                    , Tree (ASTNode "Var" "y") []
-                    ]
-                ]
-            ]
-        ]
