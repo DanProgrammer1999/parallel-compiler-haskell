@@ -129,10 +129,11 @@ innerProduct
 innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
     where 
         -- na == nb - precondition
-        (I2 ma xa) = shape a
-        (I2 xb nb) = shape b
-        aExt = replicate (lift (Z :. nb :. All :. All)) a
-        bExt = replicate (lift (Z :. All :. ma :. All)) b
+        (I2 ma _) = shape a
+        (I2 _ nb) = shape b
+
+        aExt = replicate (lift (Z :. All :. nb :. All)) a
+        bExt = replicate (lift (Z :. ma :. All :. All)) b
 
 key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
     => (Acc (Array sh k) -> Acc (Array (sh :. Int) v) -> Acc (Array sh' r))

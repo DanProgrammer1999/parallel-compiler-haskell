@@ -3,7 +3,7 @@ module Demo where
 
 import AccTree
 import Data.Array.Accelerate as A
-import Prelude as P (putStrLn, unlines, map, show, replicate, repeat)
+import Prelude as P (putStrLn, unlines, map, show, replicate, repeat, concat)
 
 exampleAst :: AST
 exampleAst =
