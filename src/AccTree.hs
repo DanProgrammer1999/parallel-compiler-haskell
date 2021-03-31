@@ -130,7 +130,7 @@ innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
     where 
         -- na == nb - precondition
         (I2 ma _) = shape a
-        (I2 _ nb) = shape b
+        (I2 nb _) = shape b
 
         aExt = replicate (lift (Z :. All :. nb :. All)) a
         bExt = replicate (lift (Z :. ma :. All :. All)) b
@@ -142,5 +142,14 @@ key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
     -> Acc (Array (sh :. Int) k, Array (sh' :. Int) r)
 key f keys vals = undefined
     
-
-
+key' :: (Eq k, Elt k, Elt v, Elt r)
+     => (Acc (Vector k) -> Acc (Vector v) -> Acc (Vector r))
+     -> Acc (Matrix k)
+     -> Acc (Matrix v)
+     -> Acc (Vector Int)
+key' f k v = _
+    where
+        identicalKeys = map boolToInt $ innerProduct (==) (&&) k k
+        identicalCols = imap (\(I2 _ j) v -> v*(j + 1)) identicalKeys
+        identityVec = map (subtract 1) $ fold1 (\a b -> if a == 0 || b == 0 then a + b else min a b) identicalCols
+        

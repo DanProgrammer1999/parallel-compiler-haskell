@@ -36,6 +36,9 @@ focusNodes = findNodesOfType "Expr" tree
 parentCoords = getParentCoordinates nc
 closestFocusAncestors = findAncestorsOfType "Expr" tree
 
+a :: Acc (Matrix Int)
+a = use $ A.fromList (Z :. 3 :. 4) [1..]
+
 b :: Acc (Matrix Int)
 b = A.replicate (lift (Z :. (5 :: Int) :. All)) $ use $ fromList (Z :. 5) (P.repeat 5)
 
