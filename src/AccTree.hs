@@ -147,9 +147,7 @@ key' :: (Eq k, Elt k, Elt v, Elt r)
      -> Acc (Matrix k)
      -> Acc (Matrix v)
      -> Acc (Vector Int)
-key' f k v = _
+key' f k v = identityVec
     where
-        identicalKeys = map boolToInt $ innerProduct (==) (&&) k k
-        identicalCols = imap (\(I2 _ j) v -> v*(j + 1)) identicalKeys
-        identityVec = map (subtract 1) $ fold1 (\a b -> if a == 0 || b == 0 then a + b else min a b) identicalCols
-        
+        identicalKeys = imap (\(I2 _ j) v -> boolToInt v * (j + 1)) $ innerProduct (==) (&&) k k
+        identityVec = map (subtract 1) $ fold1 (\a b -> if a == 0 || b == 0 then a + b else min a b) identicalKeys
