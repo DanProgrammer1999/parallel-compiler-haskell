@@ -4,16 +4,16 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9b9c28cc61cc2ac4130974db5c2004a37372bb15a2b755866dd4a404114a05ea
+-- hash: 7ff8f28ab383a73c5be916c9a37aa9adc7869f2803958bdcec7c7d3cbb62937a
 
 name:           parallel-compiler
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/parallel-compiler#readme>
-homepage:       https://github.com/githubuser/parallel-compiler#readme
-bug-reports:    https://github.com/githubuser/parallel-compiler/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2021 Author name here
+description:    Please see the README on GitHub at <https://github.com/DanProgrammer1999/parallel-compiler#readme>
+homepage:       https://github.com/DanProgrammer1999/parallel-compiler#readme
+bug-reports:    https://github.com/DanProgrammer1999/parallel-compiler/issues
+author:         Danyil Dvorianov
+maintainer:     daniil.dvoryanov@gmail.com
+copyright:      2021 Innopolis University
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -23,7 +23,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/parallel-compiler
+  location: https://github.com/DanProgrammer1999/parallel-compiler
 
 library
   exposed-modules:
@@ -36,6 +36,7 @@ library
       src
   build-depends:
       accelerate
+    , accelerate-examples
     , base >=4.7 && <5
   default-language: Haskell2010
 
@@ -48,6 +49,7 @@ executable parallel-compiler-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       accelerate
+    , accelerate-examples
     , base >=4.7 && <5
     , parallel-compiler
   default-language: Haskell2010
@@ -62,6 +64,7 @@ test-suite parallel-compiler-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       accelerate
+    , accelerate-examples
     , base >=4.7 && <5
     , parallel-compiler
   default-language: Haskell2010
