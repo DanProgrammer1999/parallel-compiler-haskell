@@ -4,6 +4,7 @@ module AccTree where
 
 import Data.Array.Accelerate     as A
 import qualified Prelude         as P
+import Data.Array.Accelerate.Examples.Internal
 
 import Utils
 
@@ -138,7 +139,7 @@ innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
 key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
     => (Acc (Array sh k) -> Acc (Array (sh :. Int) v) -> Acc (Array sh' r))
     -> Acc (Array (sh :. Int) k)
-    -> Acc (Array (sh :. Int :. Int) v)
+    -> Acc (Array (sh :. Int) v)
     -> Acc (Array (sh :. Int) k, Array (sh' :. Int) r)
 key f keys vals = undefined
     
@@ -146,8 +147,15 @@ key' :: (Eq k, Elt k, Elt v, Elt r)
      => (Acc (Vector k) -> Acc (Vector v) -> Acc (Vector r))
      -> Acc (Matrix k)
      -> Acc (Matrix v)
-     -> Acc (Vector Int)
-key' f k v = identityVec
+     -> Acc (Matrix k)
+key' f k v = uniqueKeys
     where
         identicalKeys = imap (\(I2 _ j) v -> boolToInt v * (j + 1)) $ innerProduct (==) (&&) k k
         identityVec = map (subtract 1) $ fold1 (\a b -> if a == 0 || b == 0 then a + b else min a b) identicalKeys
+
+        uniqueMask = zipWith (==) (enumFromN (shape identityVec) 0) identityVec
+        (T2 uniqueIdx _) = compact uniqueMask identityVec
+        (I1 n) = shape uniqueIdx
+        (I2 _ m) = shape k
+        uniqueKeys = backpermute (I2 n m) (\(I2 i j) -> I2 (uniqueIdx ! I1 i) j) k
+        -- unique = imap (\(I1 i) v -> the (fold1 (\a b -> boolToInt (b /= i) * a) identityVec)) identityVec
