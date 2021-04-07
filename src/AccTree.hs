@@ -126,7 +126,7 @@ innerProduct
     -> (Exp c -> Exp c -> Exp c)  -- sum function: how to combine the row of results into single element
     -> Acc (Matrix a)             -- ma x x
     -> Acc (Matrix b)             -- x x nb 
-    -> Acc (Matrix c)             
+    -> Acc (Matrix c)
 innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
     where 
         -- na == nb - precondition
@@ -135,6 +135,18 @@ innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
 
         aExt = replicate (lift (Z :. All :. nb :. All)) a
         bExt = replicate (lift (Z :. ma :. All :. All)) b
+
+uniqueRows :: (Eq a, Elt a) => Acc (Matrix a) -> Acc (Matrix a)
+uniqueRows arr = uniqueKeys
+    where
+        identicalKeys = imap (\(I2 _ j) v -> boolToInt v * (j + 1)) $ innerProduct (==) (&&) arr arr
+        identityVec = map (subtract 1) $ fold1 (\a b -> if a == 0 || b == 0 then a + b else min a b) identicalKeys
+
+        uniqueMask = zipWith (==) (enumFromN (shape identityVec) 0) identityVec
+        (T2 uniqueIdx _) = compact uniqueMask identityVec
+        (I1 n) = shape uniqueIdx
+        (I2 _ m) = shape arr
+        uniqueKeys = backpermute (I2 n m) (\(I2 i j) -> I2 (uniqueIdx ! I1 i) j) arr
 
 key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
     => (Acc (Array sh k) -> Acc (Array (sh :. Int) v) -> Acc (Array sh' r))
@@ -148,14 +160,4 @@ key' :: (Eq k, Elt k, Elt v, Elt r)
      -> Acc (Matrix k)
      -> Acc (Matrix v)
      -> Acc (Matrix k)
-key' f k v = uniqueKeys
-    where
-        identicalKeys = imap (\(I2 _ j) v -> boolToInt v * (j + 1)) $ innerProduct (==) (&&) k k
-        identityVec = map (subtract 1) $ fold1 (\a b -> if a == 0 || b == 0 then a + b else min a b) identicalKeys
-
-        uniqueMask = zipWith (==) (enumFromN (shape identityVec) 0) identityVec
-        (T2 uniqueIdx _) = compact uniqueMask identityVec
-        (I1 n) = shape uniqueIdx
-        (I2 _ m) = shape k
-        uniqueKeys = backpermute (I2 n m) (\(I2 i j) -> I2 (uniqueIdx ! I1 i) j) k
-        -- unique = imap (\(I1 i) v -> the (fold1 (\a b -> boolToInt (b /= i) * a) identityVec)) identityVec
+key' f k v = uniqueRows k
