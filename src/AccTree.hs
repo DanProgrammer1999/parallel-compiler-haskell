@@ -11,7 +11,7 @@ import Utils
 data Tree a = Tree 
     { treeRoot     :: a
     , treeChildren :: [Tree a]
-    }
+    } deriving (P.Show)
 
 data ASTNode = ASTNode 
     { nodeType  :: P.String
@@ -21,6 +21,9 @@ data ASTNode = ASTNode
 type AST = Tree ASTNode
 type VectorTree = (Vector Int, Matrix Char, Matrix Char)
 type NCTree = (Acc (Matrix Int), Matrix Char, Matrix Char)
+
+astLeafNode :: P.String -> P.String -> AST
+astLeafNode nType nVal = Tree (ASTNode nType nVal) []
 
 vectoriseTree :: AST -> [(P.Int, P.String, P.String)]
 vectoriseTree = vectoriseTree' 0
