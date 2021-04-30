@@ -6,14 +6,16 @@ import AccTree
 
 expression :: GenParser Char st AST
 expression
-    =   literal
-    <|> binaryExpression
-    <|> variable
+    =   binaryExpression
+    <|> literal
+    <*  eof
 
 binaryExpression :: GenParser Char st AST
 binaryExpression = do
     operand1 <- literal
+    ws
     op <- operator
+    ws
     operand2 <- expression
 
     return $
@@ -46,3 +48,6 @@ operator = show <$> oneOf ['+', '-', '*', '/', '%']
 
 parseExpression :: String -> Either ParseError AST
 parseExpression = parse expression ""
+
+ws :: GenParser Char st ()
+ws = optional $ choice $ map char [' ', '\t', '\n']

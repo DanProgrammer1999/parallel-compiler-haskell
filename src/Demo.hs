@@ -3,7 +3,7 @@ module Demo where
 
 import AccTree
 import Data.Array.Accelerate as A
-import Prelude as P (putStrLn, unlines, map, show, replicate, repeat, concat)
+import Prelude as P (putStrLn, unlines, map, show, replicate, repeat, concat, sum)
 
 exampleAst :: AST
 exampleAst =
@@ -28,6 +28,24 @@ exampleAst =
                 ]
             ]
         ]
+
+
+buildNLevelAST :: Int -> AST
+buildNLevelAST 0 = astLeafNode "Num" "42"
+buildNLevelAST n =
+    Tree (ASTNode "Expr" "")
+        [
+            Tree (ASTNode "Op" "+")
+            [
+                buildNLevelAST (n - 1),
+                buildNLevelAST (n - 1)
+            ]
+        ]
+
+treeSize :: AST -> Int
+treeSize = calcTreeSize 1
+    where
+        calcTreeSize count (Tree _ children) = count + P.sum (P.map (calcTreeSize count) children)
 
 printDepthVec = putStrLn $ unlines $ P.map show $ vectoriseTree exampleAst
 
