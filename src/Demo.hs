@@ -2,8 +2,9 @@
 module Demo where
 
 import AccTree
-import Data.Array.Accelerate as A
-import Prelude as P (putStrLn, unlines, map, show, replicate, repeat, concat, sum)
+import Tree
+import Data.Array.Accelerate as A hiding ((++), (*))
+import Prelude as P
 
 exampleAst :: AST
 exampleAst =
@@ -31,21 +32,17 @@ exampleAst =
 
 
 buildNLevelAST :: Int -> AST
-buildNLevelAST 0 = astLeafNode "Num" "42"
-buildNLevelAST n =
-    Tree (ASTNode "Expr" "")
+buildNLevelAST n
+    | n P.<= 0 = astLeafNode "Num" "42"
+    | otherwise =
+        Tree (ASTNode "Expr" "")
         [
             Tree (ASTNode "Op" "+")
             [
-                buildNLevelAST (n - 1),
-                buildNLevelAST (n - 1)
+                buildNLevelAST (n - 3),
+                buildNLevelAST (n - 3)
             ]
         ]
-
-treeSize :: AST -> Int
-treeSize = calcTreeSize 1
-    where
-        calcTreeSize count (Tree _ children) = count + P.sum (P.map (calcTreeSize count) children)
 
 printDepthVec = putStrLn $ unlines $ P.map show $ vectoriseTree exampleAst
 
@@ -54,16 +51,16 @@ focusNodes = findNodesOfType "Expr" tree
 parentCoords = getParentCoordinates nc
 closestFocusAncestors = findAncestorsOfType "Expr" tree
 
-a :: Acc (Matrix Int)
+a :: A.Acc (A.Matrix Int)
 a = use $ A.fromList (Z :. 3 :. 4) [1..]
 
-b :: Acc (Matrix Int)
-b = A.replicate (lift (Z :. (5 :: Int) :. All)) $ use $ fromList (Z :. 5) (P.repeat 5)
+b :: A.Acc (A.Matrix A.Int)
+b = A.replicate (A.lift (Z :. (5 :: Int) :. All)) $ A.use $ A.fromList (Z :. 5) (P.repeat 5)
 
-c :: Acc (Matrix Int)
+c :: A.Acc (A.Matrix Int)
 c = A.replicate (lift (Z :. (5 :: Int) :. All)) $ use $ fromList (Z :. 5) [1..]
 
-iMatrix :: Exp Int -> Acc (Matrix Int)
-iMatrix n = generate (I2 n n) (\(I2 i j) -> boolToInt (i >= j))
+iMatrix :: A.Exp Int -> A.Acc (A.Matrix Int)
+iMatrix n = generate (A.I2 n n) (\(A.I2 i j) -> boolToInt (i A.>= j))
 
-test = innerProduct (\a b -> a == b || b == 0) (&&) parentCoords focusNodes
+test = innerProduct (\a b -> a A.== b A.|| b A.== 0) (A.&&) parentCoords focusNodes

@@ -7,28 +7,15 @@ import qualified Prelude         as P
 import Data.Array.Accelerate.Examples.Internal
 
 import Utils
+import Tree
 
-data Tree a = Tree 
-    { treeRoot     :: a
-    , treeChildren :: [Tree a]
-    } deriving (P.Show)
-
-data ASTNode = ASTNode 
-    { nodeType  :: P.String
-    , nodeValue :: P.String
-    } deriving (P.Show)
-
-type AST = Tree ASTNode
 type VectorTree = (Vector Int, Matrix Char, Matrix Char)
 type NCTree = (Acc (Matrix Int), Matrix Char, Matrix Char)
-
-astLeafNode :: P.String -> P.String -> AST
-astLeafNode nType nVal = Tree (ASTNode nType nVal) []
 
 vectoriseTree :: AST -> [(P.Int, P.String, P.String)]
 vectoriseTree = vectoriseTree' 0
     where
-        vectoriseTree' currLevel (Tree root children)  
+        vectoriseTree' currLevel (Tree root children)
             = (currLevel, nodeType root, nodeValue root)
             : P.concatMap (vectoriseTree' (currLevel + 1)) children
 

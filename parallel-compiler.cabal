@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7f2a48d93f3a8f4795f0626a65c09be09fb478ca487f8f9a8b7f228f4ced17d3
+-- hash: 773eb480a4dd5df41996844875a6c5479cb68ebae1bebc6cc5b4048c17328f9b
 
 name:           parallel-compiler
 version:        0.1.0.0
@@ -28,8 +28,10 @@ source-repository head
 library
   exposed-modules:
       AccTree
-      Benchmark
+      Benchmarks
       Demo
+      Parser
+      Tree
       Utils
   other-modules:
       Paths_parallel_compiler
@@ -39,6 +41,7 @@ library
       accelerate
     , accelerate-examples
     , base >=4.7 && <5
+    , criterion
     , parsec
   default-language: Haskell2010
 
@@ -53,6 +56,7 @@ executable parallel-compiler-exe
       accelerate
     , accelerate-examples
     , base >=4.7 && <5
+    , criterion
     , parallel-compiler
     , parsec
   default-language: Haskell2010
@@ -69,6 +73,7 @@ test-suite parallel-compiler-test
       accelerate
     , accelerate-examples
     , base >=4.7 && <5
+    , criterion
     , parallel-compiler
     , parsec
   default-language: Haskell2010

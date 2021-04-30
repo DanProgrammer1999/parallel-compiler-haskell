@@ -24,6 +24,7 @@ dependencies:
 - accelerate
 - accelerate-examples
 - parsec
+- criterion
 
 library:
   source-dirs: src
