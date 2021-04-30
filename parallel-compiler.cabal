@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 773eb480a4dd5df41996844875a6c5479cb68ebae1bebc6cc5b4048c17328f9b
+-- hash: 721827e9e8b489b796aa4b5783f89271977d7a371a90790cb7c1ff978194d561
 
 name:           parallel-compiler
 version:        0.1.0.0
@@ -40,6 +40,8 @@ library
   build-depends:
       accelerate
     , accelerate-examples
+    , accelerate-llvm
+    , accelerate-llvm-native
     , base >=4.7 && <5
     , criterion
     , parsec
@@ -55,6 +57,8 @@ executable parallel-compiler-exe
   build-depends:
       accelerate
     , accelerate-examples
+    , accelerate-llvm
+    , accelerate-llvm-native
     , base >=4.7 && <5
     , criterion
     , parallel-compiler
@@ -72,6 +76,8 @@ test-suite parallel-compiler-test
   build-depends:
       accelerate
     , accelerate-examples
+    , accelerate-llvm
+    , accelerate-llvm-native
     , base >=4.7 && <5
     , criterion
     , parallel-compiler

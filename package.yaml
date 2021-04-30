@@ -25,6 +25,8 @@ dependencies:
 - accelerate-examples
 - parsec
 - criterion
+- accelerate-llvm
+- accelerate-llvm-native
 
 library:
   source-dirs: src
