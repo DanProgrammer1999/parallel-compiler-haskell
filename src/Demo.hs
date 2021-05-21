@@ -31,24 +31,29 @@ exampleAst =
         ]
 
 
-buildNLevelAST :: Int -> AST
-buildNLevelAST n
+buildNLevelAST :: Int -> Int -> AST
+buildNLevelAST width n
     | n P.<= 0 = astLeafNode "Num" "42"
     | otherwise =
         Tree (ASTNode "Expr" "")
         [
             Tree (ASTNode "Op" "+")
-            [
-                buildNLevelAST (n - 3),
-                buildNLevelAST (n - 3)
-            ]
+            (P.replicate width (buildNLevelAST width (n - 2)))
         ]
 
+printDepthVec :: IO ()
 printDepthVec = putStrLn $ unlines $ P.map show $ vectoriseTree exampleAst
 
+tree :: (Acc (Matrix Int), Matrix Char, Matrix Char)
 tree@(nc, types, vals) = astToNCTree exampleAst
+
+focusNodes :: Acc (Matrix Int)
 focusNodes = findNodesOfType "Expr" tree
+
+parentCoords :: Acc (Matrix Int)
 parentCoords = getParentCoordinates nc
+
+closestFocusAncestors :: Acc (Matrix Int)
 closestFocusAncestors = findAncestorsOfType "Expr" tree
 
 a :: A.Acc (A.Matrix Int)
@@ -63,4 +68,5 @@ c = A.replicate (lift (Z :. (5 :: Int) :. All)) $ use $ fromList (Z :. 5) [1..]
 iMatrix :: A.Exp Int -> A.Acc (A.Matrix Int)
 iMatrix n = generate (A.I2 n n) (\(A.I2 i j) -> boolToInt (i A.>= j))
 
+test :: Acc (Matrix Bool)
 test = innerProduct (\a b -> a A.== b A.|| b A.== 0) (A.&&) parentCoords focusNodes

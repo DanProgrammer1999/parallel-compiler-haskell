@@ -37,6 +37,9 @@ instance Show ASTNode where
 
 type AST = Tree ASTNode
 
+treeToList :: AST -> [ASTNode]
+treeToList = reverse . foldr (:) []
+
 treeSize :: AST -> Int
 treeSize = calcTreeSize 1
     where
