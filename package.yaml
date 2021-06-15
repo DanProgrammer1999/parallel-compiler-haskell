@@ -22,8 +22,6 @@ description:         Please see the README on GitHub at <https://github.com/DanP
 dependencies:
 - base >= 4.7 && < 5
 - accelerate
-- accelerate-examples
-- parsec
 - criterion
 - accelerate-llvm
 - accelerate-llvm-native
