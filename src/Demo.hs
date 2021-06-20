@@ -8,11 +8,11 @@ import Prelude as P
 
 exampleAst :: AST
 exampleAst =
-    Tree (ASTNode "Expr" "")
+    Tree (ASTNode "Expr" "1")
         [ Tree (ASTNode "Op" "/")
-            [ Tree (ASTNode "Expr" "")
+            [ Tree (ASTNode "Expr" "2")
                 [ Tree (ASTNode "Op" "+")
-                    [ Tree (ASTNode "Expr" "")
+                    [ Tree (ASTNode "Expr" "3")
                         [ Tree (ASTNode "Op" "*")
                             [ Tree (ASTNode "Var" "x") []
                             , Tree (ASTNode "Num" "2") []
@@ -21,7 +21,7 @@ exampleAst =
                     , Tree (ASTNode "Num" "1") []
                     ]
                 ]
-            , Tree (ASTNode "Expr" "")
+            , Tree (ASTNode "Expr" "4")
                 [ Tree (ASTNode "Op" "+")
                     [ Tree (ASTNode "Num" "3") []
                     , Tree (ASTNode "Var" "y") []
@@ -42,10 +42,13 @@ buildNLevelAST width n
         ]
 
 printDepthVec :: IO ()
-printDepthVec = putStrLn $ unlines $ P.map show $ vectoriseTree exampleAst
+printDepthVec = print $ treeToVectorTree exampleAst
 
-tree :: (Acc (Matrix Int), Matrix Char, Matrix Char)
-tree@(nc, types, vals) = astToNCTree exampleAst
+tree :: Acc (Matrix Int, Matrix Char, Matrix Char)
+nc :: Acc (Matrix Int)
+types :: Acc (Matrix Char)
+vals :: Acc (Matrix Char)
+tree@(A.T3 nc types vals) = astToNCTree exampleAst
 
 focusNodes :: Acc (Matrix Int)
 focusNodes = findNodesOfType "Expr" tree

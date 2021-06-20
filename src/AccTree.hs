@@ -1,79 +1,77 @@
-{-# LANGUAGE TypeOperators, ViewPatterns, FlexibleContexts, RebindableSyntax #-}
+{-# LANGUAGE TypeOperators, ViewPatterns, FlexibleContexts, RebindableSyntax, TypeFamilies #-}
 
 module AccTree where
 
 import Data.Array.Accelerate     as A
 import qualified Prelude         as P
-import Data.Array.Accelerate.Examples.Internal
-
 import Utils
 import Tree
 
 type VectorTree = (Vector Int, Matrix Char, Matrix Char)
-type NCTree = (Acc (Matrix Int), Matrix Char, Matrix Char)
+type NCTree = Acc (Matrix Int, Matrix Char, Matrix Char)
 
-vectoriseTree :: AST -> [(P.Int, P.String, P.String)]
-vectoriseTree = vectoriseTree' 0
+treeToVectorTree :: AST -> VectorTree
+treeToVectorTree tree = (depthAcc, typesAcc, valuesAcc)
     where
-        vectoriseTree' currLevel (Tree root children)
+        treeToList currLevel (Tree root children)
             = (currLevel, nodeType root, nodeValue root)
-            : P.concatMap (vectoriseTree' (currLevel + 1)) children
+            : P.concatMap (treeToList (currLevel + 1)) children
 
-treeToAccelerate :: [(P.Int, P.String, P.String)] -> VectorTree
-treeToAccelerate vTree = (depthAcc, typesAcc, valuesAcc)
-    where 
-        depthVector = P.map (\(d, _, _) -> d) vTree
-        types  = padToEqualLength '\0' $ P.map (\(_, t, _) -> t) vTree
-        values = padToEqualLength '\0' $ P.map (\(_, _, v) -> v) vTree
+        listTree = treeToList 0 tree
 
-        depthAcc = fromList (Z :. P.length depthVector) depthVector
+        depthVector = P.map (\(d, _, _) -> d) listTree
+        types  = padToEqualLength '\0' $ P.map (\(_, t, _) -> t) listTree
+        values = padToEqualLength '\0' $ P.map (\(_, _, v) -> v) listTree
 
         maxLength arr = P.maximum (P.map P.length arr)
-        
+
+        depthAcc = fromList (Z :. P.length depthVector) depthVector
         typesAcc = fromList (Z :. P.length types :. maxLength types) (P.concat types)
-        valuesAcc = fromList (Z :. P.length values :. maxLength values) (P.concat values)
+        valuesAcc = fromList (Z :. P.length values :. maxLength values) (P.concat values)        
 
 constructNodeCoordinates :: Acc (Vector Int) -> Acc (Matrix Int)
-constructNodeCoordinates depthVec = nodeCoordinates 
-    where 
+constructNodeCoordinates depthVec = nodeCoordinates
+    where
         maxDepth = the $ maximum depthVec
         nodeCount = size depthVec
 
-        -- given an index, generate a single row of depth matrix
-        depthMatrix 
-            = generate 
-            (I2 nodeCount (maxDepth + 1)) 
+        depthMatrix
+            = generate
+            (I2 nodeCount (maxDepth + 1))
             (\(I2 i j) -> boolToInt (depthVec !! i == j))
-            
+
         cumulativeMatrix = transpose $ scanl1 (+) $ transpose depthMatrix
 
-        dropExtraNumbers (I2 i j) e = if j > depthVec !! i then 0 else e
+        dropExtraNumbers (I2 i j) e = boolToInt (j <= depthVec !! i) * e
         nodeCoordinates = imap dropExtraNumbers cumulativeMatrix
 
 vectorToNCTree :: VectorTree -> NCTree
 vectorToNCTree (depthVec, types, values) =
-    let 
+    let
         depthVec' = use depthVec
         types' = use types
         values' = use values
         nodeCoordinates = constructNodeCoordinates depthVec'
-    in (nodeCoordinates, types, values)
+    in lift (nodeCoordinates, types', values')
 
-astToNCTree :: AST -> (Acc (Matrix Int), Matrix Char, Matrix Char)
-astToNCTree = vectorToNCTree . treeToAccelerate . vectoriseTree
+astToNCTree :: AST -> NCTree
+astToNCTree = vectorToNCTree . treeToVectorTree
 
 findNodesOfType :: [Char] -> NCTree -> Acc (Matrix Int)
-findNodesOfType query (nc, types, _) = reshape correctShape resVector
+findNodesOfType query (T3 nc types _)
+    = reshape (I2 (size resVector `div` maxDepth) maxDepth) resVector
     where
-        (Z :. _ :. typeLength) = arrayShape types
-        query' = use $ fromList (Z :. typeLength) (padRight typeLength '\0' query)
-        boolVector = all (\(T2 (I2 _ j) val) -> val == (query' !! j)) (indexed (use types))
-        boolMatrix = generate (shape nc) (\(I2 i _) -> boolVector !! i)
+        (I2 nRows typeLength) = shape types
+        (I2 _ maxDepth) = shape nc 
 
-        resVector = afst $ compact boolMatrix nc
+        queryAcc = use (fromList (Z :. P.length query) query)
+        compareSymbols sh@(I2 _ j) = 
+            let val = types ! sh 
+            in (j >= lift (P.length query) && val == lift '\0')
+                || val == queryAcc ! I1 j
 
-        (I2 _ maxDepth ) = shape nc
-        correctShape = I2 (size resVector `div` maxDepth) maxDepth
+        boolMatrix = replicate (lift (Z :. All :. maxDepth)) $ and $ generate (shape types) compareSymbols
+        resVector = afst $ compact boolMatrix nc     
 
 getParentCoordinates :: Acc (Matrix Int) -> Acc (Matrix Int)
 getParentCoordinates nc = generate (I2 nodeCount depth) genElement
@@ -85,14 +83,14 @@ getParentCoordinates nc = generate (I2 nodeCount depth) genElement
             else nc ! I2 i j
 
 findAncestorsOfType :: [Char] -> NCTree -> Acc (Array DIM2 Int)
-findAncestorsOfType query tree@(nc, types, _) 
+findAncestorsOfType query tree@(T3 nc _ _)
     = backpermute (shape nc) (closestAncestorMat !) focusNodes
     where
         focusNodes = findNodesOfType query tree
         parentCoords = getParentCoordinates nc
         (I2 focusNodesCount maxDepth) = shape parentCoords
         (I2 nodeCount _) = shape nc
-        
+
         focusNodesExt = replicate (lift (Z :. nodeCount :. All :. All)) focusNodes
         parentCoordsExt = replicate (lift (Z :. All :. focusNodesCount :. All)) parentCoords
 
@@ -110,15 +108,15 @@ findAncestorsOfType query tree@(nc, types, _)
             $ replicate (lift (Z :. All :. maxDepth)) closestAncestorVec
 
 -- Inner product of 2 matrices (general case of matrix multiplication with custom product and sum combinators)
-innerProduct 
-    :: (Elt a, Elt b, Elt c) 
+innerProduct
+    :: (Elt a, Elt b, Elt c)
     => (Exp a -> Exp b -> Exp c)  -- product function: how to combine 2 elements from two matrices
     -> (Exp c -> Exp c -> Exp c)  -- sum function: how to combine the row of results into single element
     -> Acc (Matrix a)             -- ma x x
     -> Acc (Matrix b)             -- x x nb 
     -> Acc (Matrix c)
 innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
-    where 
+    where
         -- na == nb - precondition
         (I2 ma _) = shape a
         (I2 nb _) = shape b
@@ -144,7 +142,7 @@ key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
     -> Acc (Array (sh :. Int) v)
     -> Acc (Array (sh :. Int) k, Array (sh' :. Int) r)
 key f keys vals = undefined
-    
+
 key' :: (Eq k, Elt k, Elt v, Elt r)
      => (Acc (Vector k) -> Acc (Vector v) -> Acc (Vector r))
      -> Acc (Matrix k)
