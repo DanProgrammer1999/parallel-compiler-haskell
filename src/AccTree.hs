@@ -142,10 +142,3 @@ key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
     -> Acc (Array (sh :. Int) v)
     -> Acc (Array (sh :. Int) k, Array (sh' :. Int) r)
 key f keys vals = undefined
-
-key' :: (Eq k, Elt k, Elt v, Elt r)
-     => (Acc (Vector k) -> Acc (Vector v) -> Acc (Vector r))
-     -> Acc (Matrix k)
-     -> Acc (Matrix v)
-     -> Acc (Matrix k)
-key' f k v = uniqueRows k

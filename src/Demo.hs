@@ -31,19 +31,6 @@ exampleAst =
         ]
 
 
-buildNLevelAST :: Int -> Int -> AST
-buildNLevelAST width n
-    | n P.<= 0 = astLeafNode "Num" "42"
-    | otherwise =
-        Tree (ASTNode "Expr" "")
-        [
-            Tree (ASTNode "Op" "+")
-            (P.replicate width (buildNLevelAST width (n - 2)))
-        ]
-
-printDepthVec :: IO ()
-printDepthVec = print $ treeToVectorTree exampleAst
-
 tree :: Acc (Matrix Int, Matrix Char, Matrix Char)
 nc :: Acc (Matrix Int)
 types :: Acc (Matrix Char)
@@ -59,17 +46,6 @@ parentCoords = getParentCoordinates nc
 closestFocusAncestors :: Acc (Matrix Int)
 closestFocusAncestors = findAncestorsOfType "Expr" tree
 
-a :: A.Acc (A.Matrix Int)
-a = use $ A.fromList (Z :. 3 :. 4) [1..]
-
-b :: A.Acc (A.Matrix A.Int)
-b = A.replicate (A.lift (Z :. (5 :: Int) :. All)) $ A.use $ A.fromList (Z :. 5) (P.repeat 5)
-
-c :: A.Acc (A.Matrix Int)
-c = A.replicate (lift (Z :. (5 :: Int) :. All)) $ use $ fromList (Z :. 5) [1..]
-
+-- A matrix where element_(i, j) is 1 if i >= j
 iMatrix :: A.Exp Int -> A.Acc (A.Matrix Int)
 iMatrix n = generate (A.I2 n n) (\(A.I2 i j) -> boolToInt (i A.>= j))
-
-test :: Acc (Matrix Bool)
-test = innerProduct (\a b -> a A.== b A.|| b A.== 0) (A.&&) parentCoords focusNodes

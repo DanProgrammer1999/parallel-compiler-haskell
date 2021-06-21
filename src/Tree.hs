@@ -47,4 +47,3 @@ treeSize = calcTreeSize 1
 
 astLeafNode :: String -> String -> AST
 astLeafNode nType nVal = Tree (ASTNode nType nVal) []
-
