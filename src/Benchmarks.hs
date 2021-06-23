@@ -8,19 +8,19 @@ import qualified Data.Array.Accelerate.LLVM.Native as LLVM
 import qualified Data.Array.Accelerate.Interpreter as I
 
 import Tree
-import Demo
+import Utils
 import AccTree
 
 treeSizes :: [(Int, Int)]
 treeSizes = zip (repeat 5) [3, 4, 5]
 
 benchmarkConfig :: Config
-benchmarkConfig = defaultConfig { timeLimit = 30.0, resamples = 5000 }
+benchmarkConfig = defaultConfig { timeLimit = 30.0, resamples = 100 }
 
 runAccelerateBenchmarks :: IO ()
 runAccelerateBenchmarks = defaultMainWith benchmarkConfig (concat suite)
     where
-        suite = map (\(w, h) -> [testAccConversion w h, testFindExpr w h, testGetParentCoords w h]) treeSizes
+        suite = map (\(w, h) -> [testAccConversion w h, testFindExpr w h, testGetParentCoords w h, testKey w h]) treeSizes
 
 runBenchmarks :: IO ()
 runBenchmarks = defaultMainWith benchmarkConfig (concat benchSuite)
@@ -59,6 +59,13 @@ testGetParentCoords w h = bench bName $ nf f nc
         bName = "accelerate: find closest ancestors of type"
         (A.T3 nc _ _) = astToNCTree (buildNLevelAST w h)
         f nc = LLVM.run $ getParentCoordinates nc
+
+testKey w h = bench bName $ nf f nc
+    where
+        bName = "accelerate: key operator"
+        tree@(A.T3 nc _ _) = astToNCTree (buildNLevelAST w h)
+        ancestors = findAncestorsOfType "Expr" tree
+        f tree = LLVM.run (key2 (\a b -> b) ancestors tree) 
 
 findAncestorsOfTypeRec :: AST -> [Char] -> [(ASTNode, ASTNode)]
 findAncestorsOfTypeRec tree targetType =

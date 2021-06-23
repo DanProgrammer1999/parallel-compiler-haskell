@@ -2,8 +2,9 @@
 
 module AccTree where
 
-import Data.Array.Accelerate     as A
-import qualified Prelude         as P
+import Data.Array.Accelerate             as A
+import Data.Array.Accelerate.Data.Monoid as A
+import qualified Prelude                 as P
 import Utils
 import Tree
 
@@ -27,7 +28,7 @@ treeToVectorTree tree = (depthAcc, typesAcc, valuesAcc)
 
         depthAcc = fromList (Z :. P.length depthVector) depthVector
         typesAcc = fromList (Z :. P.length types :. maxLength types) (P.concat types)
-        valuesAcc = fromList (Z :. P.length values :. maxLength values) (P.concat values)        
+        valuesAcc = fromList (Z :. P.length values :. maxLength values) (P.concat values)
 
 constructNodeCoordinates :: Acc (Vector Int) -> Acc (Matrix Int)
 constructNodeCoordinates depthVec = nodeCoordinates
@@ -62,16 +63,16 @@ findNodesOfType query (T3 nc types _)
     = reshape (I2 (size resVector `div` maxDepth) maxDepth) resVector
     where
         (I2 nRows typeLength) = shape types
-        (I2 _ maxDepth) = shape nc 
+        (I2 _ maxDepth) = shape nc
 
         queryAcc = use (fromList (Z :. P.length query) query)
-        compareSymbols sh@(I2 _ j) = 
-            let val = types ! sh 
+        compareSymbols sh@(I2 _ j) =
+            let val = types ! sh
             in (j >= lift (P.length query) && val == lift '\0')
                 || val == queryAcc ! I1 j
 
         boolMatrix = replicate (lift (Z :. All :. maxDepth)) $ and $ generate (shape types) compareSymbols
-        resVector = afst $ compact boolMatrix nc     
+        resVector = afst $ compact boolMatrix nc
 
 getParentCoordinates :: Acc (Matrix Int) -> Acc (Matrix Int)
 getParentCoordinates nc = generate (I2 nodeCount depth) genElement
@@ -99,17 +100,13 @@ findAncestorsOfType query tree@(T3 nc _ _)
             $ fold1 (&&)
             $ zipWith (\a b -> a == b || b == 0) parentCoordsExt focusNodesExt
 
-        closestAncestorVec
-            = fold1 max
-            $ imap (\(I2 i j) e -> e*j) isAncestorMatrix
+        closestAncestorVec = fold1 max $ imap (\(I2 i j) e -> e*j) isAncestorMatrix
 
-        closestAncestorMat
-            = imap (\(I2 i j) e -> lift (Z :. e :. j))
+        closestAncestorMat = imap (\(I2 i j) e -> lift (Z :. e :. j))
             $ replicate (lift (Z :. All :. maxDepth)) closestAncestorVec
 
 -- Inner product of 2 matrices (general case of matrix multiplication with custom product and sum combinators)
-innerProduct
-    :: (Elt a, Elt b, Elt c)
+innerProduct :: (Elt a, Elt b, Elt c)
     => (Exp a -> Exp b -> Exp c)  -- product function: how to combine 2 elements from two matrices
     -> (Exp c -> Exp c -> Exp c)  -- sum function: how to combine the row of results into single element
     -> Acc (Matrix a)             -- ma x x
@@ -136,9 +133,50 @@ uniqueRows arr = uniqueKeys
         (I2 _ m) = shape arr
         uniqueKeys = backpermute (I2 n m) (\(I2 i j) -> I2 (uniqueIdx ! I1 i) j) arr
 
+selectRows :: (Elt a) => Acc (Vector Int) -> Acc (Matrix a) -> Acc (Matrix a)
+selectRows rowIndex arr = zipWith (\i j -> arr ! I2 i j) rowIndexMat colIndexMat
+    where
+        nResultRows = unindex1 (shape rowIndex)
+        (I2 nRows nCols) = shape arr
+        rowIndexMat = replicate (lift (Z :. All :. nCols)) rowIndex
+        colIndexMat = replicate (lift (Z :. nResultRows :. All))
+            $ enumFromN (I1 nResultRows) (0 :: Exp Int)
+
+-- 2-dimensional version of key operator
+-- First parameter is not used for now
+key2 :: (Elt k, Elt v, Elt r, Eq k)
+    => (Acc (Vector k) -> Acc (Vector v) -> Acc (Vector r))
+    -> Acc (Matrix k)
+    -> Acc (Matrix v)
+    -> Acc (Matrix v, Vector Int)
+key2 _ keys vals = T2 (selectRows selectors' vals) descriptor'
+    where
+        (I2 nKeysRows nKeysCols) = shape keys
+        -- each row contains indexes of equal rows
+        groupsMatrix = imap (\(I2 _ j) v -> boolToInt v * (j + 1) - 1) $ innerProduct (==) (&&) keys keys
+
+        -- if a or b is zero, min a b is zero, and if not, (a == 0 || b == 0) is zero
+        chooseMinId a b = if a < 0 || b < 0 then max a b else min a b
+        uniqueRowsIdxVec = fold1 chooseMinId groupsMatrix
+        uniqueMaskMat =
+            replicate (lift (Z :. All :. nKeysRows))
+            $ zipWith (==) (enumFromN (shape uniqueRowsIdxVec) 0) uniqueRowsIdxVec
+
+        (T2 selectors descriptor) = compact uniqueMaskMat groupsMatrix
+        selectors' = afst $ filter (>= 0) selectors
+
+        descriptorHelper = map (unindex1 . fst) $ afst $ filter (\t -> snd t > 0) (indexed descriptor)
+        descriptor' = generate (shape descriptorHelper)
+            (\(I1 i) -> 
+                let a = if i + 1 == unindex1 (shape descriptorHelper)
+                        then unindex1 (shape descriptor)
+                        else descriptorHelper ! I1 (i + 1)
+                in a - descriptorHelper ! I1 i)
+        
+-- general version of the key operator
 key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
-    => (Acc (Array sh k) -> Acc (Array (sh :. Int) v) -> Acc (Array sh' r))
+    => (Acc (Array sh k) -> Acc (Array sh' v) -> Acc (Array sh' r))
     -> Acc (Array (sh :. Int) k)
-    -> Acc (Array (sh :. Int) v)
-    -> Acc (Array (sh :. Int) k, Array (sh' :. Int) r)
+    -> Acc (Array (sh' :. Int) v)
+    -> Acc (Array (sh' :. Int) r, Vector Int)
 key f keys vals = undefined
