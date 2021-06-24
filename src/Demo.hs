@@ -3,7 +3,9 @@ module Demo where
 
 import AccTree
 import Tree
-import Data.Array.Accelerate as A hiding ((++), (*))
+import Data.Array.Accelerate as A hiding ((++), (*), map)
+import Data.Array.Accelerate.LLVM.Native (run)
+import Data.List (intercalate)
 import Prelude as P
 
 exampleAst :: AST
@@ -30,7 +32,6 @@ exampleAst =
             ]
         ]
 
-
 tree :: Acc (Matrix Int, Matrix Char, Matrix Char)
 nc :: Acc (Matrix Int)
 types :: Acc (Matrix Char)
@@ -47,5 +48,24 @@ closestFocusAncestors :: Acc (Matrix Int)
 closestFocusAncestors = findAncestorsOfType "Expr" tree
 
 -- A matrix where element_(i, j) is 1 if i >= j
-iMatrix :: A.Exp Int -> A.Acc (A.Matrix Int)
-iMatrix n = generate (A.I2 n n) (\(A.I2 i j) -> boolToInt (i A.>= j))
+iMatrix :: Exp Int -> Acc (Matrix Int)
+iMatrix n = generate (I2 n n) (\(I2 i j) -> boolToInt (i A.>= j))
+
+chunksOf :: Int -> [a] -> [[a]]
+chunksOf _ [] = []
+chunksOf n xs =
+    let (ys, zs) = splitAt n xs
+    in  ys : chunksOf n zs
+
+runVec :: (Show e, Elt e) => Acc (Vector e) -> ([String] -> String) -> String
+runVec arr f = f $ map show $ toList $ run arr
+
+runMat :: (Show e, Elt e) => Acc (Matrix e) -> ([String] -> String) -> String
+runMat arr f = unlines asList
+    where
+        computed = run arr
+        (Z :. _ :. nCols) = arrayShape computed
+        asList = map (f . map show) $ chunksOf nCols $ toList computed
+
+latexTableLineFormatter :: Int -> [String] -> String 
+latexTableLineFormatter level lines = concat (P.replicate level "\t") ++ intercalate " & " lines ++ " \\\\"

@@ -10,7 +10,9 @@ instance Show a => Show (Tree a) where
         where
             showT n (Tree node children)
                 =  nodePrefix n ++ show node
-                ++ (if null children then " " else "\n" ++ levelPrefix ' ' n)
+                ++ (if null children
+                    then " " 
+                    else "\n" ++ levelPrefix ' ' n)
                 ++ "[" ++ concatMap (("\n" ++) . showT (n + 1)) children ++ "]\n"
                 ++ levelPrefix ' ' (n - 1)
 

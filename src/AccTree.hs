@@ -149,10 +149,12 @@ key2 :: (Elt k, Elt v, Elt r, Eq k)
     -> Acc (Matrix k)
     -> Acc (Matrix v)
     -> Acc (Matrix v, Segments Int)
-key2 _ keys vals = T2 (selectRows selectors' vals) descriptor'
+key2 _ keys vals = T2 (selectRows selectors' vals) descriptor
     where
         (I2 nKeysRows nKeysCols) = shape keys
+
         -- each row contains indexes of equal rows
+        -- groupsMatrix: nKeysRows x nKeysRows
         groupsMatrix = imap (\(I2 _ j) v -> boolToInt v * (j + 1) - 1) $ innerProduct (==) (&&) keys keys
 
         -- if a or b is zero, min a b is zero, and if not, (a == 0 || b == 0) is zero
@@ -162,16 +164,9 @@ key2 _ keys vals = T2 (selectRows selectors' vals) descriptor'
             replicate (lift (Z :. All :. nKeysRows))
             $ zipWith (==) (enumFromN (shape uniqueRowsIdxVec) 0) uniqueRowsIdxVec
 
-        (T2 selectors descriptor) = compact uniqueMaskMat groupsMatrix
-        selectors' = afst $ filter (>= 0) selectors
-
-        descriptorHelper = map (unindex1 . fst) $ afst $ filter (\t -> snd t > 0) (indexed descriptor)
-        descriptor' = generate (shape descriptorHelper)
-            (\(I1 i) -> 
-                let a = if i + 1 == unindex1 (shape descriptorHelper)
-                        then unindex1 (shape descriptor)
-                        else descriptorHelper ! I1 (i + 1)
-                in a - descriptorHelper ! I1 i)
+        selectors = afst $ compact uniqueMaskMat groupsMatrix
+        correctShape = I2 (unindex1 (shape selectors) `div` nKeysRows) nKeysRows
+        (T2 selectors' descriptor) = filter (>= 0) (reshape correctShape selectors)
         
 -- general version of the key operator
 key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)

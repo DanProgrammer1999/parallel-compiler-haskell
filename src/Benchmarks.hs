@@ -12,10 +12,10 @@ import Utils
 import AccTree
 
 treeSizes :: [(Int, Int)]
-treeSizes = zip (repeat 5) [3, 4, 5]
+treeSizes = zip (repeat 15) [3, 4, 5]
 
 benchmarkConfig :: Config
-benchmarkConfig = defaultConfig { timeLimit = 30.0, resamples = 100 }
+benchmarkConfig = defaultConfig { timeLimit = 30.0, resamples = 1000 }
 
 runAccelerateBenchmarks :: IO ()
 runAccelerateBenchmarks = defaultMainWith benchmarkConfig (concat suite)
