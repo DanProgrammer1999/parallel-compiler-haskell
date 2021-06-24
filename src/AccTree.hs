@@ -148,7 +148,7 @@ key2 :: (Elt k, Elt v, Elt r, Eq k)
     => (Acc (Vector k) -> Acc (Vector v) -> Acc (Vector r))
     -> Acc (Matrix k)
     -> Acc (Matrix v)
-    -> Acc (Matrix v, Vector Int)
+    -> Acc (Matrix v, Segments Int)
 key2 _ keys vals = T2 (selectRows selectors' vals) descriptor'
     where
         (I2 nKeysRows nKeysCols) = shape keys
