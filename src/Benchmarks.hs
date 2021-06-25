@@ -20,7 +20,14 @@ benchmarkConfig = defaultConfig { timeLimit = 30.0, resamples = 1000 }
 runAccelerateBenchmarks :: IO ()
 runAccelerateBenchmarks = defaultMainWith benchmarkConfig (concat suite)
     where
-        suite = map (\(w, h) -> [testAccConversion w h, testFindExpr w h, testGetParentCoords w h, testKey w h]) treeSizes
+        suite = map (
+            \(w, h) -> [
+                testAccConversion w h,
+                testFindExpr w h,
+                testGetParentCoords w h,
+                testFindAncestors w h,
+                testKey w h
+            ]) treeSizes
 
 runBenchmarks :: IO ()
 runBenchmarks = defaultMainWith benchmarkConfig (concat benchSuite)
@@ -56,9 +63,16 @@ testFindExpr w h = bench bName $ nf f nctree
 
 testGetParentCoords w h = bench bName $ nf f nc
     where
-        bName = "accelerate: find closest ancestors of type"
+        bName = "accelerate: get parent coordinates"
         (A.T3 nc _ _) = astToNCTree (buildNLevelAST w h)
         f nc = LLVM.run $ getParentCoordinates nc
+
+testFindAncestors w h = bench bName $ nf f tree
+    where
+        bName = "accelerate: find closest ancestors of type"
+        tree = astToNCTree (buildNLevelAST w h)
+        f t = LLVM.run $ findAncestorsOfType "Expr" t
+
 
 testKey w h = bench bName $ nf f nc
     where
