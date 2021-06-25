@@ -11,6 +11,8 @@ import Tree
 type VectorTree = (Vector Int, Matrix Char, Matrix Char)
 type NCTree = Acc (Matrix Int, Matrix Char, Matrix Char)
 
+-- Tree to accelerate
+
 treeToVectorTree :: AST -> VectorTree
 treeToVectorTree tree = (depthAcc, typesAcc, valuesAcc)
     where
@@ -58,6 +60,8 @@ vectorToNCTree (depthVec, types, values) =
 astToNCTree :: AST -> NCTree
 astToNCTree = vectorToNCTree . treeToVectorTree
 
+-- Main logic
+
 findNodesOfType :: [Char] -> NCTree -> Acc (Matrix Int)
 findNodesOfType query (T3 nc types _)
     = selectRows selector nc
@@ -90,31 +94,6 @@ findAncestorsOfType query tree@(T3 nc _ _)
         closestAncestorIndexVec = fold1 max $ imap
             (\(I2 i j) e -> boolToInt e * j)
             (innerProduct (\a b -> a == b || b == 0) (&&) parentCoords focusNodes)
-
--- Inner product of 2 matrices (general case of matrix multiplication with custom product and sum combinators)
-innerProduct :: (Elt a, Elt b, Elt c)
-    => (Exp a -> Exp b -> Exp c)  -- product function: how to combine 2 elements from two matrices
-    -> (Exp c -> Exp c -> Exp c)  -- sum function: how to combine the row of results into single element
-    -> Acc (Matrix a)             -- ma x x
-    -> Acc (Matrix b)             -- x x nb 
-    -> Acc (Matrix c)
-innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
-    where
-        -- r1 == c2 - precondition
-        (I2 r1 _) = shape a
-        (I2 _ c2) = shape b
-
-        aExt = replicate (lift (Z :. All :. c2 :. All)) a
-        bExt = replicate (lift (Z :. r1 :. All :. All)) b
-
-selectRows :: (Elt a) => Acc (Vector Int) -> Acc (Matrix a) -> Acc (Matrix a)
-selectRows rowIndex arr = zipWith (\i j -> arr ! I2 i j) rowIndexMat colIndexMat
-    where
-        nResultRows = size rowIndex
-        (I2 _ nCols) = shape arr
-        rowIndexMat = replicate (lift (Z :. All :. nCols)) rowIndex
-        colIndexMat = replicate (lift (Z :. nResultRows :. All))
-            $ enumFromN (I1 nCols) (0 :: Exp Int)
 
 -- 2-dimensional version of key operator
 -- First parameter is not used for now
@@ -149,3 +128,30 @@ key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
     -> Acc (Array (sh' :. Int) v)
     -> Acc (Array (sh' :. Int) r, Vector Int)
 key f keys vals = undefined
+
+-- General functions
+
+-- Inner product of 2 matrices (general case of matrix multiplication with custom product and sum combinators)
+innerProduct :: (Elt a, Elt b, Elt c)
+    => (Exp a -> Exp b -> Exp c)  -- product function: how to combine 2 elements from two matrices
+    -> (Exp c -> Exp c -> Exp c)  -- sum function: how to combine the row of results into single element
+    -> Acc (Matrix a)             -- ma x x
+    -> Acc (Matrix b)             -- x x nb 
+    -> Acc (Matrix c)
+innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
+    where
+        -- r1 == c2 - precondition
+        (I2 r1 _) = shape a
+        (I2 _ c2) = shape b
+
+        aExt = replicate (lift (Z :. All :. c2 :. All)) a
+        bExt = replicate (lift (Z :. r1 :. All :. All)) b
+
+selectRows :: (Elt a) => Acc (Vector Int) -> Acc (Matrix a) -> Acc (Matrix a)
+selectRows rowIndex arr = zipWith (\i j -> arr ! I2 i j) rowIndexMat colIndexMat
+    where
+        nResultRows = size rowIndex
+        (I2 _ nCols) = shape arr
+        rowIndexMat = replicate (lift (Z :. All :. nCols)) rowIndex
+        colIndexMat = replicate (lift (Z :. nResultRows :. All))
+            $ enumFromN (I1 nCols) (0 :: Exp Int)
