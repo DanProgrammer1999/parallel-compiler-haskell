@@ -66,7 +66,6 @@ findNodesOfType :: [Char] -> NCTree -> Acc (Matrix Int)
 findNodesOfType query (T3 nc types _)
     = selectRows selector nc
     where
-        (I2 _ maxDepth) = shape nc
         queryAcc = use (fromList (Z :. P.length query) query)
         
         -- either index is out of bounds of query, and the element is zero, or elements match
@@ -89,7 +88,6 @@ findAncestorsOfType query tree@(T3 nc _ _)
     where
         focusNodes = findNodesOfType query tree
         parentCoords = getParentCoordinates nc
-        (I2 focusNodesCount maxDepth) = shape parentCoords
 
         closestAncestorIndexVec = fold1 max $ imap
             (\(I2 i j) e -> boolToInt e * j)
@@ -112,14 +110,12 @@ key2 _ keys vals = T2 (selectRows selectors' vals) descriptor
 
         -- if a or b is zero, min a b is zero, and if not, (a == 0 || b == 0) is zero
         chooseMinId a b = if a < 0 || b < 0 then max a b else min a b
-        uniqueRowsIdxVec = fold1 chooseMinId groupsMatrix
-        uniqueMaskMat =
-            replicate (lift (Z :. All :. nKeysRows))
-            $ zipWith (==) (enumFromN (shape uniqueRowsIdxVec) 0) uniqueRowsIdxVec
+        uniqueRowsIdxVec = afst
+                         $ filter (>= 0)
+                         $ imap (\(I1 i) n -> boolToInt (i == n) * (n + 1) - 1)
+                         $ fold1 chooseMinId groupsMatrix
 
-        selectors = afst $ compact uniqueMaskMat groupsMatrix
-        correctShape = I2 (unindex1 (shape selectors) `div` nKeysRows) nKeysRows
-        (T2 selectors' descriptor) = filter (>= 0) (reshape correctShape selectors)
+        (T2 selectors' descriptor) = filter (> 0) $ selectRows uniqueRowsIdxVec groupsMatrix 
         
 -- general version of the key operator
 key :: (Shape sh, Shape sh', Elt k, Elt v, Elt r)
@@ -142,9 +138,9 @@ innerProduct prodF sumF a b = fold1 sumF $ zipWith prodF aExt bExt
     where
         -- r1 == c2 - precondition
         (I2 r1 _) = shape a
-        (I2 _ c2) = shape b
+        (I2 r2 _) = shape b
 
-        aExt = replicate (lift (Z :. All :. c2 :. All)) a
+        aExt = replicate (lift (Z :. All :. r2 :. All)) a
         bExt = replicate (lift (Z :. r1 :. All :. All)) b
 
 selectRows :: (Elt a) => Acc (Vector Int) -> Acc (Matrix a) -> Acc (Matrix a)

@@ -12,7 +12,7 @@ import Utils
 import AccTree
 
 treeSizes :: [(Int, Int)]
-treeSizes = zip (repeat 15) [3, 4, 5]
+treeSizes = zip (repeat 50) [30, 40, 50]
 
 benchmarkConfig :: Config
 benchmarkConfig = defaultConfig { timeLimit = 30.0, resamples = 1000 }
@@ -88,7 +88,10 @@ findAncestorsOfTypeRec tree targetType =
     where
         findClosestAncestors (Tree root []) _ res = res
         findClosestAncestors node@(Tree root children) currClosest res
-            = mconcat [newRes, mconcat $ map (\node -> findClosestAncestors node newClosest []) children]
+            = mconcat [
+                newRes,
+                mconcat $ map (\node -> findClosestAncestors node newClosest []) children
+            ]
             where
                 newClosest = if nodeType root == targetType then root else currClosest
                 newRes = res ++ zip (map treeRoot children) (repeat newClosest)

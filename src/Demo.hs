@@ -44,7 +44,7 @@ focusNodes = findNodesOfType "Expr" tree
 parentCoords :: Acc (Matrix Int)
 parentCoords = getParentCoordinates nc
 
--- closestFocusAncestors :: Acc (Matrix Int)
+closestFocusAncestors :: Acc (Matrix Int)
 closestFocusAncestors = findAncestorsOfType "Expr" tree
 
 -- A matrix where element_(i, j) is 1 if i >= j
@@ -69,5 +69,3 @@ runMat arr f = unlines asList
 
 latexTableLineFormatter :: Int -> [String] -> String 
 latexTableLineFormatter level lines = concat (P.replicate level "\t") ++ intercalate " & " lines ++ " \\\\"
-
-selector = use (fromList (Z :. (5 :: Int)) [1 :: Int ..])
