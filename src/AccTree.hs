@@ -32,6 +32,18 @@ treeToVectorTree tree = (depthAcc, typesAcc, valuesAcc)
         typesAcc = fromList (Z :. P.length types :. maxLength types) (P.concat types)
         valuesAcc = fromList (Z :. P.length values :. maxLength values) (P.concat values)
 
+vectorToNCTree :: VectorTree -> NCTree
+vectorToNCTree (depthVec, types, values) =
+    let
+        depthVec' = use depthVec
+        types' = use types
+        values' = use values
+        nodeCoordinates = constructNodeCoordinates depthVec'
+    in lift (nodeCoordinates, types', values')
+
+astToNCTree :: AST -> NCTree
+astToNCTree = vectorToNCTree . treeToVectorTree
+
 constructNodeCoordinates :: Acc (Vector Int) -> Acc (Matrix Int)
 constructNodeCoordinates depthVec = nodeCoordinates
     where
@@ -47,18 +59,6 @@ constructNodeCoordinates depthVec = nodeCoordinates
 
         dropExtraNumbers (I2 i j) e = boolToInt (j <= depthVec !! i) * e
         nodeCoordinates = imap dropExtraNumbers cumulativeMatrix
-
-vectorToNCTree :: VectorTree -> NCTree
-vectorToNCTree (depthVec, types, values) =
-    let
-        depthVec' = use depthVec
-        types' = use types
-        values' = use values
-        nodeCoordinates = constructNodeCoordinates depthVec'
-    in lift (nodeCoordinates, types', values')
-
-astToNCTree :: AST -> NCTree
-astToNCTree = vectorToNCTree . treeToVectorTree
 
 -- Main logic
 
@@ -106,7 +106,8 @@ key2 _ keys vals = T2 (selectRows selectors' vals) descriptor
 
         -- each row contains indexes of equal rows
         -- groupsMatrix: nKeysRows x nKeysRows
-        groupsMatrix = imap (\(I2 _ j) v -> boolToInt v * (j + 1) - 1) $ innerProduct (==) (&&) keys keys
+        groupsMatrix = imap (\(I2 _ j) v -> boolToInt v * (j + 1) - 1)
+            $ innerProduct (==) (&&) keys keys
 
         -- if a or b is zero, min a b is zero, and if not, (a == 0 || b == 0) is zero
         chooseMinId a b = if a < 0 || b < 0 then max a b else min a b
